@@ -1,0 +1,57 @@
+@model List<OnlineShop.Models.User>
+
+<h2>Manage Users</h2>
+<a asp-action="CreateUser" class="btn btn-success mb-3">Add User</a>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var u in Model)
+    {
+        <tr>
+            <td>@u.Name</td>
+            <td>@u.Email</td>
+            <td>
+                <span class="badge @(u.IsAdmin ? "bg-danger" : "bg-secondary")">
+                    @(u.IsAdmin ? "Admin" : "User")
+                </span>
+            </td>
+            <td>
+                @if (User.FindFirst("UserId")?.Value != u.Id.ToString())
+                {
+                    <form asp-action="ToggleAdmin" method="post" style="display:inline">
+                        <input type="hidden" name="id" value="@u.Id" />
+                        <button type="submit" class="btn btn-sm @(u.IsAdmin ? "btn-warning" : "btn-info")">
+                            @(u.IsAdmin ? "Demote" : "Promote")
+                        </button>
+                    </form>
+
+                    <form asp-action="DeleteUser" method="post" style="display:inline">
+                        <input type="hidden" name="id" value="@u.Id" />
+                        <button type="submit" class="btn btn-danger btn-sm"
+                                onclick="return confirm('Delete @u.Name?')">
+                            Delete
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <em>Current user</em>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

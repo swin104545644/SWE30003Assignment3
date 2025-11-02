@@ -1,0 +1,44 @@
+# .NET Build & Runtime
+bin/
+obj/
+*.csproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log
+logs/
+
+# Visual Studio / VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# macOS
+.DS_Store
+
+# Rider / JetBrains
+.idea/
+*.iml
+
+# Secrets & Local Config
+appsettings.Development.json
+secrets.json
+
+# Database (if using SQLite file)
+*.db
+AppData/
+
+# Node / Frontend (if any)
+node_modules/
+wwwroot/lib/
+
+# Temporary Files
+*.tmp
+*.temp
+*.cache

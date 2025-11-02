@@ -1,0 +1,38 @@
+@model OnlineShop.Models.User
+
+<h2>Create User</h2>
+
+<form asp-action="CreateUser" method="post">
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" type="email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label>Password</label>
+        <input name="PasswordHash" type="password" class="form-control" required minlength="6" />
+    </div>
+
+    @if (User.IsInRole("Admin"))
+    {
+        <div class="mb-3 form-check">
+            <input type="checkbox" name="makeAdmin" value="true" class="form-check-input" id="makeAdmin" />
+            <input type="hidden" name="makeAdmin" value="false" />
+            <label class="form-check-label" for="makeAdmin">Make Admin</label>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">Create</button>
+    <a asp-action="Users" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

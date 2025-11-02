@@ -1,0 +1,20 @@
+@model List<OnlineShop.Models.EnrichedCartItem>
+
+<h2>Checkout</h2>
+
+<table class="table">
+    @foreach (var x in Model)
+    {
+        <tr>
+            <td>@x.Product.Name x @x.CartItem.Quantity = $@x.LineTotal</td>
+        </tr>
+    }
+</table>
+
+<h4>Total: $@Model.Sum(x => x.LineTotal)</h4>
+
+<form asp-action="ConfirmCheckout" method="post">
+    <button type="submit" class="btn btn-primary">Confirm & Pay (Mock)</button>
+</form>
+
+<a asp-action="Index" class="btn btn-secondary">Back to Cart</a>

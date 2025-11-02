@@ -1,0 +1,33 @@
+@model List<OnlineShop.Models.Product>
+<h2>Product Catalog</h2>
+
+<form asp-action="Index" method="get" class="mb-4">
+    <div class="input-group">
+        <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Search products..." />
+        <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+</form>
+
+@if (!Model.Any())
+{
+    <p>No products found.</p>
+}
+else
+{
+    <div class="row">
+    @foreach (var p in Model)
+    {
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <img src="@p.ImageUrl" class="card-img-top" style="height:200px; object-fit:cover;" alt="@p.Name" />
+                <div class="card-body">
+                    <h5>@p.Name - $@p.Price</h5>
+                    <p>@p.Description</p>
+                    <p>@p.Stock in stock</p>
+                    <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-primary">View</a>
+                </div>
+            </div>
+        </div>
+    }
+    </div>
+}

@@ -1,0 +1,72 @@
+@model List<OnlineShop.Models.EnrichedCartItem>
+
+<h2>Shopping Cart</h2>
+
+@if (!Model.Any())
+{
+    <p>Your cart is empty.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Stock</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var x in Model)
+            {
+                <tr class="@(x.IsInStock ? "" : "table-danger")">
+                    <td>@x.Product.Name</td>
+                    <td>$@x.Product.Price</td>
+                    <td>
+                        <form asp-action="Update" method="post" style="display:inline">
+                            <input type="hidden" name="productId" value="@x.CartItem.ProductId" />
+                            <input type="number" name="quantity" value="@x.CartItem.Quantity"
+                                   min="1" max="@x.AvailableStock" style="width:60px" />
+                            <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                        </form>
+                    </td>
+                    <td>
+                        @if (x.AvailableStock == 0)
+                        {
+                            <span class="text-danger">Out of stock</span>
+                        }
+                        else
+                        {
+                            <text>@x.AvailableStock left</text>
+                        }
+                    </td>
+                    <td>$@x.LineTotal</td>
+                    <td>
+                        <form asp-action="Remove" method="post">
+                            <input type="hidden" name="productId" value="@x.CartItem.ProductId" />
+                            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <h4>Total: $@Model.Sum(x => x.LineTotal)</h4>
+
+    var canCheckout = Model.All(x => x.IsInStock);
+
+    @if (canCheckout)
+    {
+        <a asp-action="Checkout" class="btn btn-success">Proceed to Checkout</a>
+    }
+    else
+    {
+        <div class="alert alert-danger">
+            <strong>Cannot checkout:</strong> Fix out-of-stock items above.
+        </div>
+    }
+}

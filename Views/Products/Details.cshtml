@@ -1,0 +1,14 @@
+@model OnlineShop.Models.Product
+<h2>@Model.Name</h2>
+<img src="@Model.ImageUrl" width="300" alt="@Model.Name" />
+<p>@Model.Description</p>
+<p><strong>Price: $@Model.Price</strong></p>
+<p><strong>Stock: @Model.Stock</strong></p>
+
+<form asp-controller="Products" asp-action="AddToCart" method="post">
+    <input type="hidden" name="productId" value="@Model.Id" />
+    <button type="submit" class="btn btn-success" @(Model.Stock == 0 ? "disabled" : "")>
+        @(Model.Stock == 0 ? "Out of Stock" : "Add to Cart")
+    </button>
+</form>
+<a asp-controller="Cart" asp-action="Index" class="btn btn-info">View Cart</a>
