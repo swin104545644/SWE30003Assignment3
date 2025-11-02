@@ -10,7 +10,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseInMemoryDatabase("OnlineShopDb"));
 
 builder.Services.AddSession();
-
+builder.Services.AddSingleton<FileStorage>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -28,8 +28,15 @@ var app = builder.Build();
 // Seed Data
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    SeedData(db);
+    var storage = scope.ServiceProvider.GetRequiredService<FileStorage>();
+    var users = storage.LoadUsers();
+    var products = storage.LoadProducts();
+    var cart = storage.LoadCart();
+
+    // Only seed if empty
+    if (!users.Any()) storage.SaveUsers(storage.LoadUsers());
+    if (!products.Any()) storage.SaveProducts(storage.LoadProducts());
+    if (!cart.Any()) storage.SaveCart(cart);
 }
 
 app.UseHttpsRedirection();

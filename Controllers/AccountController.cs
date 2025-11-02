@@ -4,15 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineShop.Data;
 using OnlineShop.Models;
 using System.Security.Claims;
-using BCrypt.Net;
 
 namespace OnlineShop.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly FileStorage _context;
 
-        public AccountController(AppDbContext context)
+        public AccountController(FileStorage context)
         {
             _context = context;
         }
@@ -23,28 +22,34 @@ namespace OnlineShop.Controllers
 		[HttpPost]
 		public IActionResult Signup(User user)
 		{
-			if (_context.Users.Any(u => u.Email == user.Email))
+			var users = _context.LoadUsers();
+			if (users.Any(u => u.Email == user.Email))
 			{
-				ModelState.AddModelError("Email", "Email already exists");
+				ModelState.AddModelError("Email", "Email exists");
 				return View(user);
 			}
 
-			user.IsAdmin = false;
-			user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
-			_context.Users.Add(user);
-			_context.SaveChanges();
-
-			return RedirectToAction("Login");
+			if (ModelState.IsValid)
+			{
+				user.Id = users.Any() ? users.Max(u => u.Id) + 1 : 1;
+				user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
+				user.IsAdmin = !users.Any(); // First user = admin
+				users.Add(user);
+				_context.SaveUsers(users);
+				return RedirectToAction("Login");
+			}
+			return View(user);
 		}
 
         [HttpGet]
         public IActionResult Login() => View();
 
         [HttpPost]
-        public async Task<IActionResult> Login(string email, string password)
-        {
-            var user = _context.Users.FirstOrDefault(u => u.Email == email);
-            if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+		public async Task<IActionResult> Login(string email, string password)
+		{
+			var users = _context.LoadUsers();
+			var user = users.FirstOrDefault(u => u.Email == email);
+			if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
 			{
 				var claims = new List<Claim>
 				{
@@ -52,20 +57,15 @@ namespace OnlineShop.Controllers
 					new Claim(ClaimTypes.Email, user.Email),
 					new Claim("UserId", user.Id.ToString())
 				};
-
-				if (user.IsAdmin)
-					claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+				if (user.IsAdmin) claims.Add(new Claim(ClaimTypes.Role, "Admin"));
 
 				var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-				var principal = new ClaimsPrincipal(identity);
-				await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-
+				await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 				return RedirectToAction("Index", "Products");
 			}
-
-            ModelState.AddModelError("", "Invalid login attempt");
-            return View();
-        }
+			ModelState.AddModelError("", "Invalid login");
+			return View();
+		}
 
 		public async Task<IActionResult> Logout()
 		{
@@ -80,7 +80,8 @@ namespace OnlineShop.Controllers
 		[ValidateAntiForgeryToken]
 		public IActionResult ForgotPassword(string email)
 		{
-			var user = _context.Users.FirstOrDefault(u => u.Email == email);
+			var users = _context.LoadUsers();
+			var user = users.FirstOrDefault(u => u.Email == email);
 			if (user == null)
 			{
 				return RedirectToAction("ForgotPasswordConfirmation");
@@ -89,7 +90,7 @@ namespace OnlineShop.Controllers
 			var token = Guid.NewGuid().ToString();
 			user.PasswordResetToken = token;
 			user.PasswordResetTokenExpires = DateTime.UtcNow.AddHours(1);
-			_context.SaveChanges();
+			_context.SaveUsers(users);
 
 			var resetLink = Url.Action(
 				"ResetPassword",
@@ -114,7 +115,9 @@ namespace OnlineShop.Controllers
 			if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
 				return RedirectToAction("Login");
 
-			var user = _context.Users.FirstOrDefault(u => u.Email == email);
+			var users = _context.LoadUsers();
+			var user = users.FirstOrDefault(u => u.Email == email);
+
 			if (user == null ||
 				user.PasswordResetToken != token ||
 				user.PasswordResetTokenExpires < DateTime.UtcNow)
@@ -132,7 +135,9 @@ namespace OnlineShop.Controllers
 		{
 			if (!ModelState.IsValid) return View(model);
 
-			var user = _context.Users.FirstOrDefault(u => u.Email == model.Email);
+			var users = _context.LoadUsers();
+			var user = users.FirstOrDefault(u => u.Email == model.Email);
+
 			if (user == null ||
 				user.PasswordResetToken != model.Token ||
 				user.PasswordResetTokenExpires < DateTime.UtcNow)
@@ -143,7 +148,7 @@ namespace OnlineShop.Controllers
 			user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
 			user.PasswordResetToken = null;
 			user.PasswordResetTokenExpires = null;
-			_context.SaveChanges();
+			_context.SaveUsers(users);
 
 			return RedirectToAction("ResetPasswordSuccess");
 		}

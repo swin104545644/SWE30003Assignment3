@@ -1,0 +1,71 @@
+@model OnlineShop.Models.SalesStatsViewModel
+
+<h2>Sales Statistics</h2>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center bg-primary text-white">
+            <div class="card-body">
+                <h5>Total Orders</h5>
+                <h2>@Model.TotalOrders</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center bg-success text-white">
+            <div class="card-body">
+                <h5>Total Revenue</h5>
+                <h2>$@Model.TotalRevenue.ToString("F2")</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h5>Revenue by Period</h5>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Period</th>
+            <th>Orders</th>
+            <th>Revenue</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var kvp in Model.PeriodStats)
+        {
+            <tr>
+                <td>@kvp.Key</td>
+                <td>@kvp.Value.Orders</td>
+                <td>$@kvp.Value.Revenue.ToString("F2")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h5>Top 5 Products Sold</h5>
+@if (Model.TopProducts.Any())
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity Sold</th>
+                <th>Revenue</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.TopProducts)
+            {
+                <tr>
+                    <td>@p.Name</td>
+                    <td>@p.Quantity</td>
+                    <td>$@p.Revenue.ToString("F2")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No sales yet.</p>
+}

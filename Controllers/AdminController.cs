@@ -8,11 +8,11 @@ namespace OnlineShop.Controllers
     [Authorize(Roles = "Admin")]
     public class AdminController : Controller
     {
-		private readonly AppDbContext _context;
+		private readonly FileStorage _context;
 		private readonly IHttpContextAccessor _httpContextAccessor;
 		private readonly IWebHostEnvironment _environment;
 
-		public AdminController(AppDbContext context, IHttpContextAccessor httpContextAccessor, IWebHostEnvironment environment)
+		public AdminController(FileStorage context, IHttpContextAccessor httpContextAccessor, IWebHostEnvironment environment)
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
@@ -23,7 +23,7 @@ namespace OnlineShop.Controllers
 
         public IActionResult Index()
         {
-            var products = _context.Products.ToList();
+            var products = _context.LoadProducts();
             return View(products);
         }
 
@@ -37,8 +37,11 @@ namespace OnlineShop.Controllers
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> Create(ProductFormViewModel model)
 		{
+			
 			if (ModelState.IsValid)
 			{
+
+				var products = _context.LoadProducts();
 				var product = new Product
 				{
 					Name = model.Name,
@@ -53,8 +56,8 @@ namespace OnlineShop.Controllers
 					product.ImageUrl = await UploadImage(model.ImageFile);
 				}
 
-				_context.Products.Add(product);
-				_context.SaveChanges();
+				products.Add(product);
+				_context.SaveProducts(products);
 				return RedirectToAction("Index");
 			}
 			return View(model);
@@ -63,7 +66,9 @@ namespace OnlineShop.Controllers
 		[HttpGet]
 		public IActionResult Edit(int id)
 		{
-			var product = _context.Products.Find(id);
+
+			var products = _context.LoadProducts();
+			var product = products.FirstOrDefault(p => p.Id == id);
 			if (product == null) return NotFound();
 
 			var model = new ProductFormViewModel
@@ -87,7 +92,9 @@ namespace OnlineShop.Controllers
 
 			if (ModelState.IsValid)
 			{
-				var product = _context.Products.Find(id);
+
+				var products = _context.LoadProducts();
+				var product = products.FirstOrDefault(p => p.Id == id);
 				if (product == null) return NotFound();
 
 				if (model.ImageFile != null)
@@ -101,7 +108,7 @@ namespace OnlineShop.Controllers
 				product.Price = model.Price;
 				product.Stock = model.Stock;
 
-				_context.SaveChanges();
+				_context.SaveProducts(products);
 				return RedirectToAction("Index");
 			}
 			return View(model);
@@ -146,71 +153,76 @@ namespace OnlineShop.Controllers
         }
 
 		[HttpPost]
-		public IActionResult Delete(int id)
-		{
-			var product = _context.Products.Find(id);
-			if (product != null)
-			{
-				_context.Products.Remove(product);
-				_context.SaveChanges();
-			}
-			return RedirectToAction("Index");
-		}
+        [ValidateAntiForgeryToken]
+        public IActionResult Delete(int id)
+        {
+            var products = _context.LoadProducts();
+            var product = products.FirstOrDefault(p => p.Id == id);
+            if (product == null) return NotFound();
+
+            DeleteImage(product.ImageUrl);
+            products.Remove(product);
+            _context.SaveProducts(products);
+            return RedirectToAction("Index");
+        }
 
 		public IActionResult Users()
-		{
-			var users = _context.Users.ToList();
-			return View(users);
-		}
+        {
+            var users = _context.LoadUsers();
+            return View(users);
+        }
 
 		[HttpGet]
 		public IActionResult CreateUser() => View();
 
 		[HttpPost]
-		[ValidateAntiForgeryToken]
-		public IActionResult CreateUser(User user, bool makeAdmin = false)
-		{
-			if (_context.Users.Any(u => u.Email == user.Email))
-			{
-				ModelState.AddModelError("Email", "Email already exists");
-				return View(user);
-			}
+        [ValidateAntiForgeryToken]
+        public IActionResult CreateUser(User user, bool makeAdmin = false)
+        {
+            var users = _context.LoadUsers();
+            if (users.Any(u => u.Email == user.Email))
+            {
+                ModelState.AddModelError("Email", "Email already exists");
+                return View(user);
+            }
 
-			if (ModelState.IsValid)
-			{
-				var currentUser = _context.Users.Find(CurrentUserId);
-				if (!currentUser!.IsAdmin && makeAdmin)
-				{
-					ModelState.AddModelError("", "You are not authorized to create admin accounts.");
-					return View(user);
-				}
+            if (ModelState.IsValid)
+            {
+                var currentUser = users.FirstOrDefault(u => u.Id == CurrentUserId);
+                if (!currentUser!.IsAdmin && makeAdmin)
+                {
+                    ModelState.AddModelError("", "Not authorized");
+                    return View(user);
+                }
 
-				user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
-				user.IsAdmin = makeAdmin && currentUser.IsAdmin;
-				_context.Users.Add(user);
-				_context.SaveChanges();
-				return RedirectToAction("Users");
-			}
-			return View(user);
-		}
+                user.Id = users.Any() ? users.Max(u => u.Id) + 1 : 1;
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash);
+                user.IsAdmin = makeAdmin && currentUser.IsAdmin;
+                users.Add(user);
+                _context.SaveUsers(users);
+                return RedirectToAction("Users");
+            }
+            return View(user);
+        }
 
 		[HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult ToggleAdmin(int id)
         {
-            var user = _context.Users.Find(id);
-            var currentUser = _context.Users.Find(CurrentUserId);
+            var users = _context.LoadUsers();
+            var user = users.FirstOrDefault(u => u.Id == id);
+            var currentUser = users.FirstOrDefault(u => u.Id == CurrentUserId);
 
             if (user == null || !currentUser!.IsAdmin) return Forbid();
 
-            if (user.IsAdmin && _context.Users.Count(u => u.IsAdmin) <= 1)
+            if (user.IsAdmin && users.Count(u => u.IsAdmin) <= 1)
             {
                 TempData["Error"] = "Cannot remove the last admin.";
                 return RedirectToAction("Users");
             }
 
             user.IsAdmin = !user.IsAdmin;
-            _context.SaveChanges();
+            _context.SaveUsers(users);
             return RedirectToAction("Users");
         }
 
@@ -218,19 +230,59 @@ namespace OnlineShop.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult DeleteUser(int id)
         {
-            var user = _context.Users.Find(id);
+            var users = _context.LoadUsers();
+            var user = users.FirstOrDefault(u => u.Id == id);
             if (user == null || user.Id == CurrentUserId) return Forbid();
 
-            if (user.IsAdmin && _context.Users.Count(u => u.IsAdmin) <= 1)
+            if (user.IsAdmin && users.Count(u => u.IsAdmin) <= 1)
             {
                 TempData["Error"] = "Cannot delete the last admin.";
                 return RedirectToAction("Users");
             }
 
-            _context.Users.Remove(user);
-            _context.SaveChanges();
+            users.Remove(user);
+            _context.SaveUsers(users);
             return RedirectToAction("Users");
         }
+
+		public IActionResult Stats()
+		{
+			var context = HttpContext.RequestServices.GetRequiredService<FileStorage>();
+			var orders = context.LoadOrders();
+
+			var stats = new SalesStatsViewModel
+			{
+				TotalOrders = orders.Count,
+				TotalRevenue = orders.Sum(o => o.Total),
+				PeriodStats = new Dictionary<string, PeriodStats>
+				{
+					["Today"] = GetPeriodStats(orders, TimeSpan.FromDays(1)),
+					["Last 7 Days"] = GetPeriodStats(orders, TimeSpan.FromDays(7)),
+					["Last 30 Days"] = GetPeriodStats(orders, TimeSpan.FromDays(30)),
+					["All Time"] = GetPeriodStats(orders, TimeSpan.FromDays(365 * 10))
+				},
+				TopProducts = orders
+					.SelectMany(o => o.Items)
+					.GroupBy(i => i.ProductName)
+					.Select(g => new TopProduct { Name = g.Key, Quantity = g.Sum(i => i.Quantity), Revenue = g.Sum(i => i.Price * i.Quantity) })
+					.OrderByDescending(p => p.Revenue)
+					.Take(5)
+					.ToList()
+			};
+
+			return View(stats);
+		}
+
+		private PeriodStats GetPeriodStats(List<Order> orders, TimeSpan period)
+		{
+			var cutoff = DateTime.UtcNow.Add(-period);
+			var periodOrders = orders.Where(o => o.OrderDate >= cutoff).ToList();
+			return new PeriodStats
+			{
+				Orders = periodOrders.Count,
+				Revenue = periodOrders.Sum(o => o.Total)
+			};
+		}
 
 		[HttpGet]
 		public IActionResult ForgotPassword() => View();
@@ -238,7 +290,10 @@ namespace OnlineShop.Controllers
 		[HttpPost]
 		public async Task<IActionResult> ForgotPassword(string email)
 		{
-			var user = _context.Users.FirstOrDefault(u => u.Email == email);
+
+			var users = _context.LoadUsers();
+			var user = users.FirstOrDefault(u => u.Email == email);
+
 			if (user == null)
 			{
 
@@ -249,7 +304,7 @@ namespace OnlineShop.Controllers
 			var token = Guid.NewGuid().ToString();
 			user.PasswordResetToken = token;
 			user.PasswordResetTokenExpires = DateTime.UtcNow.AddHours(1);
-			_context.SaveChanges();
+			_context.SaveUsers(users);
 
 			var resetLink = Url.Action("ResetPassword", "Account",
 				new { email = user.Email, token }, Request.Scheme);
@@ -269,7 +324,8 @@ namespace OnlineShop.Controllers
 		{
 			if (email == null || token == null) return RedirectToAction("Login");
 
-			var user = _context.Users.FirstOrDefault(u => u.Email == email);
+			var users = _context.LoadUsers();
+			var user = users.FirstOrDefault(u => u.Email == email);
 			if (user == null || user.PasswordResetToken != token || 
 				user.PasswordResetTokenExpires < DateTime.UtcNow)
 			{
@@ -285,7 +341,9 @@ namespace OnlineShop.Controllers
 		{
 			if (!ModelState.IsValid) return View(model);
 
-			var user = _context.Users.FirstOrDefault(u => u.Email == model.Email);
+			var users = _context.LoadUsers();
+			var user = users.FirstOrDefault(u => u.Email == model.Email);
+
 			if (user == null || user.PasswordResetToken != model.Token || 
 				user.PasswordResetTokenExpires < DateTime.UtcNow)
 			{
@@ -295,7 +353,7 @@ namespace OnlineShop.Controllers
 			user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password);
 			user.PasswordResetToken = null;
 			user.PasswordResetTokenExpires = null;
-			_context.SaveChanges();
+			_context.SaveUsers(users);
 
 			return RedirectToAction("ResetPasswordSuccess");
 		}

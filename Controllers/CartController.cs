@@ -5,14 +5,15 @@ using OnlineShop.Models;
 
 namespace OnlineShop.Controllers
 {
-    [Authorize]
     public class CartController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly FileStorage _context;
+        private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public CartController(AppDbContext context)
+        public CartController(FileStorage storage, IHttpContextAccessor httpContextAccessor)
         {
-            _context = context;
+            _context = storage;
+            _httpContextAccessor = httpContextAccessor;
         }
 
         public IActionResult Index()
@@ -25,7 +26,10 @@ namespace OnlineShop.Controllers
         [HttpPost]
         public IActionResult Update(int productId, int quantity)
         {
-            var product = _context.Products.Find(productId);
+
+            var products = _context.LoadProducts();
+            var product = products.FirstOrDefault(u => u.Id == productId);
+            
             if (product == null || quantity > product.Stock || quantity <= 0)
             {
                 TempData["Error"] = product == null
@@ -67,11 +71,52 @@ namespace OnlineShop.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult ConfirmCheckout()
         {
+            var enriched = GetEnrichedCart();
+            if (!enriched.All(x => x.IsInStock))
+            {
+                TempData["CartWarning"] = "Some items are out of stock.";
+                return RedirectToAction("Index");
+            }
+            var context = HttpContext.RequestServices.GetRequiredService<FileStorage>();
+            var orders = context.LoadOrders();
+            var userId = CurrentUserId;
+
+            var order = new Order
+            {
+                Id = orders.Any() ? orders.Max(o => o.Id) + 1 : 1,
+                UserId = userId,
+                Total = enriched.Sum(x => x.LineTotal)
+            };
+
+            foreach (var item in enriched)
+            {
+                order.Items.Add(new OrderItem
+                {
+                    ProductId = item.CartItem.ProductId,
+                    ProductName = item.Product.Name,
+                    Price = item.Product.Price,
+                    Quantity = item.CartItem.Quantity
+                });
+
+                if (!context.ReduceStock(item.CartItem.ProductId, item.CartItem.Quantity))
+                {
+                    TempData["Error"] = "Stock changed during checkout.";
+                    return RedirectToAction("Index");
+                }
+            }
+
+            orders.Add(order);
+            context.SaveOrders(orders);
+
             HttpContext.Session.Remove("Cart");
+
             return RedirectToAction("PaymentSuccess");
         }
+
+        private int CurrentUserId => int.Parse(_httpContextAccessor.HttpContext!.User.FindFirst("UserId")!.Value);
 
         public IActionResult PaymentSuccess() => View();
 
@@ -92,9 +137,10 @@ namespace OnlineShop.Controllers
         {
             var cart = GetCart();
             var enriched = new List<EnrichedCartItem>();
+            var products = _context.LoadProducts();
             foreach (var item in cart)
             {
-                var product = _context.Products.Find(item.ProductId);
+                var product = products.FirstOrDefault(u => u.Id == item.ProductId);
                 if (product != null)
                 {
                     enriched.Add(new EnrichedCartItem
