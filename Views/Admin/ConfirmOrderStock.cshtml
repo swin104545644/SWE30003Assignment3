@@ -1,0 +1,17 @@
+@model OnlineShop.Models.ConfirmOrderStockViewModel
+<h2>Confirm Stock Order</h2>
+
+<div class="alert alert-info">
+    <p><strong>Product:</strong> @Model.ProductName</p>
+    <p><strong>Current Stock:</strong> @Model.CurrentStock</p>
+    <p><strong>Order Quantity:</strong> @Model.OrderQuantity</p>
+    <p><strong>New Stock:</strong> @Model.NewStock</p>
+</div>
+
+<form asp-action="ConfirmOrderStock" method="post">
+    <input type="hidden" asp-for="ProductId" />
+    <input type="hidden" asp-for="OrderQuantity" />
+
+    <button type="submit" class="btn btn-success">Confirm Order</button>
+    <a asp-action="Index" class="btn btn-danger">Cancel</a>
+</form>

@@ -32,6 +32,9 @@
                 <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-warning btn-sm">
                     Edit
                 </a>
+                <a asp-action="OrderStock" asp-rout-id="@p.Id" class="btn btn-info btn-sm">
+                    OrderStock
+                </a>
                 <form asp-action="Delete" method="post" style="display:inline">
                     <input type="hidden" name="id" value="@p.Id" />
                     <button type="submit" class="btn btn-danger btn-sm"

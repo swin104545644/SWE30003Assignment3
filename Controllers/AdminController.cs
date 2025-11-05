@@ -344,7 +344,7 @@ namespace OnlineShop.Controllers
 			var users = _context.LoadUsers();
 			var user = users.FirstOrDefault(u => u.Email == model.Email);
 
-			if (user == null || user.PasswordResetToken != model.Token || 
+			if (user == null || user.PasswordResetToken != model.Token ||
 				user.PasswordResetTokenExpires < DateTime.UtcNow)
 			{
 				return RedirectToAction("ResetPasswordExpired");
@@ -356,6 +356,64 @@ namespace OnlineShop.Controllers
 			_context.SaveUsers(users);
 
 			return RedirectToAction("ResetPasswordSuccess");
+		}
+		
+		[HttpGet]
+		public IActionResult OrderStock(int id)
+		{
+			var products = _context.LoadProducts();
+			var product = products.FirstOrDefault(p => p.Id == id);
+			if (product == null) return NotFound();
+
+			var model = new OrderStockViewModel
+			{
+				ProductId = product.Id,
+				ProductName = product.Name,
+				CurrentStock = product.Stock
+			};
+			return View(model);
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public IActionResult OrderStock(OrderStockViewModel model)
+		{
+			if (!ModelState.IsValid) return View(model);
+
+			return RedirectToAction("ConfirmOrderStock", new { id = model.ProductId, quantity = model.Quantity });
+		}
+
+		[HttpGet]
+		public IActionResult ConfirmOrderStock(int id, int quantity)
+		{
+			var products = _context.LoadProducts();
+			var product = products.FirstOrDefault(p => p.Id == id);
+			if (product == null) return NotFound();
+
+			var model = new ConfirmOrderStockViewModel
+			{
+				ProductId = product.Id,
+				ProductName = product.Name,
+				CurrentStock = product.Stock,
+				OrderQuantity = quantity,
+				NewStock = product.Stock + quantity
+			};
+			return View(model);
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public IActionResult ConfirmOrderStock(ConfirmOrderStockViewModel model)
+		{
+			var products = _context.LoadProducts();
+			var product = products.FirstOrDefault(p => p.Id == model.ProductId);
+			if (product == null) return NotFound();
+
+			product.Stock += model.OrderQuantity;
+			_context.SaveProducts(products);
+
+			TempData["Success"] = $"Ordered {model.OrderQuantity} × {product.Name}. New stock: {product.Stock}";
+			return RedirectToAction("Index");
 		}
 
 		public IActionResult ResetPasswordExpired() => View();

@@ -17,7 +17,13 @@ namespace OnlineShop.Data
         public List<User> LoadUsers()
         {
             var path = Path.Combine(_appDataPath, "users.json");
-            if (!File.Exists(path)) return GetDefaultUsers();
+            if (!File.Exists(path))
+            {
+                var defaults = GetDefaultUsers();
+                SaveUsers(defaults);
+                return defaults;
+            }
+
             var json = File.ReadAllText(path);
             return JsonSerializer.Deserialize<List<User>>(json) ?? GetDefaultUsers();
         }
@@ -31,7 +37,13 @@ namespace OnlineShop.Data
         public List<Product> LoadProducts()
         {
             var path = Path.Combine(_appDataPath, "products.json");
-            if (!File.Exists(path)) return GetDefaultProducts();
+            if (!File.Exists(path))
+            {
+                var defaults = GetDefaultProducts();
+                SaveProducts(defaults);
+                return defaults;
+            }
+
             var json = File.ReadAllText(path);
             return JsonSerializer.Deserialize<List<Product>>(json) ?? GetDefaultProducts();
         }
@@ -43,12 +55,18 @@ namespace OnlineShop.Data
         }
 
 		public Dictionary<int, List<CartItem>> LoadCart()
-		{
-			var path = Path.Combine(_appDataPath, "cart.json");
-			if (!File.Exists(path)) return new();
-			var json = File.ReadAllText(path);
-			return JsonSerializer.Deserialize<Dictionary<int, List<CartItem>>>(json) ?? new();
-		}
+        {
+            var path = Path.Combine(_appDataPath, "cart.json");
+            if (!File.Exists(path))
+            {
+                var defaults = new Dictionary<int, List<CartItem>>();
+                SaveCart(defaults);  // ← Save empty cart on first load
+                return defaults;
+            }
+
+            var json = File.ReadAllText(path);
+            return JsonSerializer.Deserialize<Dictionary<int, List<CartItem>>>(json) ?? new();
+        }
 
 		public void SaveCart(Dictionary<int, List<CartItem>> cart)
 		{
@@ -57,12 +75,18 @@ namespace OnlineShop.Data
 		}
 		
 		public List<Order> LoadOrders()
-		{
-			var path = Path.Combine(_appDataPath, "orders.json");
-			if (!File.Exists(path)) return new List<Order>();
-			var json = File.ReadAllText(path);
-			return JsonSerializer.Deserialize<List<Order>>(json) ?? new List<Order>();
-		}
+        {
+            var path = Path.Combine(_appDataPath, "orders.json");
+            if (!File.Exists(path))
+            {
+                var defaults = new List<Order>();
+                SaveOrders(defaults);  // ← Save empty list on first load
+                return defaults;
+            }
+
+            var json = File.ReadAllText(path);
+            return JsonSerializer.Deserialize<List<Order>>(json) ?? new List<Order>();
+        }
 
 		public void SaveOrders(List<Order> orders)
 		{
@@ -89,8 +113,8 @@ namespace OnlineShop.Data
                 {
                     Id = 1,
                     Name = "Admin",
-                    Email = "admin@shop.com",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+                    Email = "admin@admin.com",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin"),
                     IsAdmin = true
                 }
             };
@@ -100,8 +124,8 @@ namespace OnlineShop.Data
         {
             return new List<Product>
             {
-                new Product { Id = 1, Name = "Laptop", Description = "High-end gaming laptop", Price = 1299.99m, ImageUrl = "/images/products/noimage.png", Stock = 5 },
-                new Product { Id = 2, Name = "Mouse", Description = "Wireless ergonomic mouse", Price = 29.99m, ImageUrl = "/images/products/noimage.png", Stock = 50 }
+                new Product { Id = 1, Name = "Apple", Description = "Definitely not poisonous...", Price = 1299.99m, ImageUrl = "/images/products/sample1.png", Stock = 5 },
+                new Product { Id = 2, Name = "Toy Transformer", Description = "Definitely not a Decepticon", Price = 29.99m, ImageUrl = "/images/products/sample2.png", Stock = 50 }
             };
         }
     }

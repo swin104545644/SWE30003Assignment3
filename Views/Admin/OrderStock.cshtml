@@ -1,0 +1,22 @@
+@model OnlineShop.Models.OrderStockViewModel
+<h2>Order Stock: @Model.ProductName</h2>
+<p>Current stock: @Model.CurrentStock</p>
+
+<form asp-action="OrderStock" method="post">
+    <input type="hidden" asp-for="ProductId" />
+    <input type="hidden" asp-for="ProductName" />
+    <input type="hidden" asp-for="CurrentStock" />
+
+    <div class="mb-3">
+        <label asp-for="Quantity" class="form-label"></label>
+        <input asp-for="Quantity" type="number" class="form-control" min="1" max="1000" />
+        <span asp-validation-for="Quantity" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Continue to Confirmation</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

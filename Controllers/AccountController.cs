@@ -49,7 +49,16 @@ namespace OnlineShop.Controllers
 		{
 			var users = _context.LoadUsers();
 			var user = users.FirstOrDefault(u => u.Email == email);
-			if (user != null && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+
+			if (user == null)
+			{
+
+				ModelState.AddModelError("email", "No account found with that email address");
+				return View();
+
+			}
+
+			if (BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
 			{
 				var claims = new List<Claim>
 				{
@@ -63,7 +72,14 @@ namespace OnlineShop.Controllers
 				await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 				return RedirectToAction("Index", "Products");
 			}
-			ModelState.AddModelError("", "Invalid login");
+			else
+			{
+
+				ModelState.AddModelError("password", "Incorrect password, please try again");
+
+			}
+
+			ModelState.AddModelError("unexpected", "Login failed unexpectedly, please refresh and try again");
 			return View();
 		}
 
