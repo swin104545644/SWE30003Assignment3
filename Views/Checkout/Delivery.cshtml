@@ -1,0 +1,58 @@
+@model List<OnlineShop.Models.Delivery>
+<div id="delivery-selection">
+    <label>Delivery Type</label>
+    <select id="deliveryType" name="DeliveryType" class="form-control">
+        <option value="0">Home delivery</option>
+        <option value="1">Pick up (in-store)</option>
+    </select>
+
+    <div id="address-fields">
+        <input type="text" id="recipientName" name="RecipientName" placeholder="Recipient name" />
+        <input type="text" id="line1" name="Line1" placeholder="Address line 1" />
+        <input type="text" id="suburb" name="Suburb" placeholder="Suburb" />
+        <input type="text" id="postcode" name="Postcode" placeholder="Postcode" />
+        <input type="text" id="phone" name="Phone" placeholder="Phone" />
+    </div>
+
+    <div>
+        <label>Delivery method</label>
+        <select id="methodId" name="MethodId">
+            @foreach ()
+            {
+                <option value="@m.Id">@m.DisplayName - @m.BasePrice.ToString("C")</option>
+            }
+        </select>
+    </div>
+
+    <button id="btnCalculateDelivery" type="button">Calculate delivery</button>
+    <div id="deliveryPriceResult"></div>
+</div>
+
+@section scripts {
+    <script>
+        document.getElementById("btnCalculateDelivery").addEventListener("click", async function () {
+            const methodId = document.getElementById("methodId").value;
+            const payload = {
+                methodId,
+                address: {
+                    recipientName: document.getElementById("recipientName").value,
+                    line1: document.getElementById("line1").value,
+                    suburb: document.getElementById("suburb").value,
+                    postcode: document.getElementById("postcode").value,
+                    phone: document.getElementById("phone").value
+                }
+            };
+            const resp = await fetch('/api/delivery/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                document.getElementById("deliveryPriceResult").innerText = "Delivery price: " + data.price;
+            } else {
+                document.getElementById("deliveryPriceResult").innerText = "Error: " + data.error;
+            }
+        });
+    </script>
+}
