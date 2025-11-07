@@ -5,6 +5,7 @@ using OnlineShop.Models;
 
 namespace OnlineShop.Controllers
 {
+    [Authorize]
     public class CartController : Controller
     {
         private readonly FileStorage _context;
@@ -29,7 +30,7 @@ namespace OnlineShop.Controllers
 
             var products = _context.LoadProducts();
             var product = products.FirstOrDefault(u => u.Id == productId);
-            
+
             if (product == null || quantity > product.Stock || quantity <= 0)
             {
                 TempData["Error"] = product == null

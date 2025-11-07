@@ -5,7 +5,8 @@ using OnlineShop.Models;
 
 namespace OnlineShop.Controllers
 {
-    [Authorize]
+    // users need to be able to view catalog even if not logged in
+    // [Authorize]
     public class ProductsController : Controller
     {
         private readonly FileStorage _context;
@@ -15,20 +16,20 @@ namespace OnlineShop.Controllers
             _context = context;
         }
 
-		public IActionResult Index(string? search)
-    {
-        var products = _context.LoadProducts();
-        if (!string.IsNullOrWhiteSpace(search))
-            products = products.Where(p => p.Name.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
-        return View(products);
-    }
+        public IActionResult Index(string? search)
+        {
+            var products = _context.LoadProducts();
+            if (!string.IsNullOrWhiteSpace(search))
+                products = products.Where(p => p.Name.Contains(search, StringComparison.OrdinalIgnoreCase)).ToList();
+            return View(products);
+        }
 
-		public IActionResult Details(int id)
-    {
-        var product = _context.LoadProducts().FirstOrDefault(p => p.Id == id);
-        if (product == null) return NotFound();
-        return View(product);
-    }
+        public IActionResult Details(int id)
+        {
+            var product = _context.LoadProducts().FirstOrDefault(p => p.Id == id);
+            if (product == null) return NotFound();
+            return View(product);
+        }
 
         [HttpPost]
         public IActionResult AddToCart(int productId, int quantity = 1)
